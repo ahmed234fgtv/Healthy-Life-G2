@@ -150,40 +150,49 @@ describe('Registrar actividad física', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('envía el JSON del contrato, conserva la fecha y confirma solo después del 201 válido', async () => {
-    const user = userEvent.setup()
-    fetchMock.mockResolvedValue(
-      jsonResponse(
-        activityResponse({
-          activityType: 'cycling',
-          notes: 'Ruta por el parque',
-        }),
-      ),
-    )
-    render(<RegisterActivityPage />)
-    const form = await completeRequiredFields(user)
-    await user.selectOptions(form.type, 'cycling')
-    await user.type(form.notes, 'Ruta por el parque')
-    await user.click(form.submit)
+  it.each([
+    'Ruta por el parque',
+    '  Ruta por el parque',
+    'Ruta por el parque  ',
+    '  Ruta por el parque  ',
+  ])(
+    'normaliza las observaciones %j en el JSON y confirma solo después del 201 válido',
+    async (notes) => {
+      const user = userEvent.setup()
+      fetchMock.mockResolvedValue(
+        jsonResponse(
+          activityResponse({
+            activityType: 'cycling',
+            notes: 'Ruta por el parque',
+          }),
+        ),
+      )
+      render(<RegisterActivityPage />)
+      const form = await completeRequiredFields(user)
+      await user.selectOptions(form.type, 'cycling')
+      await user.type(form.notes, notes)
+      expect(form.notes).toHaveValue(notes)
+      await user.click(form.submit)
 
-    expect(await screen.findByText(successMessage)).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    const [url, init] = fetchMock.mock.calls[0]
-    expect(String(url)).toBe('http://localhost:3001/api/activities')
-    expect(init?.method).toBe('POST')
-    expect(new Headers(init?.headers).get('Content-Type')).toBe(
-      'application/json',
-    )
-    expect(JSON.parse(String(init?.body))).toEqual({
-      activityType: 'cycling',
-      activityDate: '2026-10-09',
-      notes: 'Ruta por el parque',
-    })
-    expect(form.type).toHaveValue('')
-    expect(form.notes).toHaveValue('')
-  })
+      expect(await screen.findByText(successMessage)).toBeInTheDocument()
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      const [url, init] = fetchMock.mock.calls[0]
+      expect(String(url)).toBe('http://localhost:3001/api/activities')
+      expect(init?.method).toBe('POST')
+      expect(new Headers(init?.headers).get('Content-Type')).toBe(
+        'application/json',
+      )
+      expect(JSON.parse(String(init?.body))).toEqual({
+        activityType: 'cycling',
+        activityDate: '2026-10-09',
+        notes: 'Ruta por el parque',
+      })
+      expect(form.type).toHaveValue('')
+      expect(form.notes).toHaveValue('')
+    },
+  )
 
-  it.each(['', '   '])(
+  it.each(['', '   ', '\n\t '])(
     'omite las observaciones opcionales %j del JSON',
     async (notes) => {
       const user = userEvent.setup()
@@ -269,13 +278,13 @@ describe('Registrar actividad física', () => {
     )
     render(<RegisterActivityPage />)
     const form = await completeRequiredFields(user)
-    await user.type(form.notes, 'Caminata tranquila')
+    await user.type(form.notes, '  Caminata tranquila  ')
     await user.click(form.submit)
 
     expect(await screen.findByText(message)).toBeInTheDocument()
     expect(form.type).toHaveValue('walking')
     expect(form.date).toHaveValue('2026-10-09')
-    expect(form.notes).toHaveValue('Caminata tranquila')
+    expect(form.notes).toHaveValue('  Caminata tranquila  ')
     expect(form.submit).toBeEnabled()
     expect(screen.queryByText(successMessage)).not.toBeInTheDocument()
 

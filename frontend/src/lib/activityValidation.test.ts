@@ -114,7 +114,7 @@ describe('activity validation and payload', () => {
     ).toHaveProperty('notes')
   })
 
-  it.each(['', '   ', '\n\t '])(
+  it.each(['', '   ', '\n\t ', '\u00a0 \t\n'])(
     'omits optional notes containing only whitespace (%j)',
     (notes) => {
       expect(toActivityPayload({ ...validValues, notes })).toEqual({
@@ -124,15 +124,26 @@ describe('activity validation and payload', () => {
     },
   )
 
-  it('preserves nonempty notes and date exactly without adding userId', () => {
-    expect(
-      toActivityPayload({ ...validValues, notes: '  Paseo por el parque.\n' }),
-    ).toEqual({
-      activityType: 'walking',
-      activityDate: '2026-10-09',
-      notes: '  Paseo por el parque.\n',
-    })
-  })
+  it.each([
+    ['  Paseo por el parque.', 'Paseo por el parque.'],
+    ['Paseo por el parque.  ', 'Paseo por el parque.'],
+    ['  Paseo por el parque.  ', 'Paseo por el parque.'],
+    [
+      '\u00a0\t Paseo  por el parque.\nSegunda vuelta.\n ',
+      'Paseo  por el parque.\nSegunda vuelta.',
+    ],
+  ])(
+    'normalizes note edges (%j) without changing inner whitespace or the form',
+    (notes, expected) => {
+      const values = { ...validValues, notes }
+      expect(toActivityPayload(values)).toEqual({
+        activityType: 'walking',
+        activityDate: '2026-10-09',
+        notes: expected,
+      })
+      expect(values.notes).toBe(notes)
+    },
+  )
 
   it('never constructs a payload with invalid fields', () => {
     expect(() =>

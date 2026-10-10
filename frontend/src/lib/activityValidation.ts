@@ -64,9 +64,12 @@ export function toActivityPayload(values: ActivityFormValues): ActivityPayload {
     throw new Error('No se puede enviar una actividad con datos inválidos.')
   }
 
+  // Match the backend's trim before comparing the persisted response.
+  const notes = values.notes.trim()
+
   return {
     activityType: values.activityType,
     activityDate: values.activityDate,
-    ...(values.notes.trim() ? { notes: values.notes } : {}),
+    ...(notes ? { notes } : {}),
   }
 }

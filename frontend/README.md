@@ -47,7 +47,7 @@ La única pantalla contiene:
 | Fecha de la actividad | Obligatoria, con el día local actual como valor inicial. Acepta fechas reales del calendario gregoriano en `YYYY-MM-DD`, incluidos años bisiestos.            |
 | Observaciones         | Opcionales, con contador y un límite de 500 caracteres. No se corta automáticamente el texto que excede el límite: se muestra el error y se bloquea el envío. |
 
-La fecha se conserva como texto sin convertirla a UTC. No se impone una prohibición de fechas futuras porque el contrato no la establece. Las observaciones vacías o compuestas únicamente por espacios se omiten del JSON; las demás se envían tal como se escribieron, sin recortar espacios. El contador y la validación utilizan la longitud de las cadenas JavaScript: algunos símbolos, como determinados emojis, ocupan más de una unidad.
+La fecha se conserva como texto sin convertirla a UTC. No se impone una prohibición de fechas futuras porque el contrato no la establece. Antes del envío se aplica `trim()` a las observaciones para coincidir con la normalización del backend: se eliminan los espacios de los extremos y, si el resultado está vacío, se omite `notes` del JSON. Se conservan los espacios y saltos de línea interiores. El texto del formulario y la validación del límite de 500 caracteres antes de normalizar permanecen intactos. El contador y la validación utilizan la longitud de las cadenas JavaScript: algunos símbolos, como determinados emojis, ocupan más de una unidad.
 
 Los errores de campo aparecen al abandonar el campo o al intentar guardar. Un envío inválido enfoca el primer campo que requiere corrección. Durante la petición se deshabilitan los campos y el botón, se anuncia el estado de carga y una guarda adicional impide envíos simultáneos antes del siguiente renderizado de React.
 
@@ -67,7 +67,7 @@ El cliente utiliza `fetch` para enviar `POST /api/activities` con `Content-Type:
 
 No se envían `userId`, duración ni intensidad. El backend asocia el usuario y genera `id` y `createdAt` después de guardar. Si no se enviaron observaciones, debe devolver `notes: null`.
 
-Además del estado HTTP, el frontend comprueba en tiempo de ejecución la respuesta: identificador entero positivo, tipo y fecha coincidentes con la solicitud, observaciones coincidentes y fecha de creación ISO en UTC. TypeScript por sí solo no garantiza la forma del JSON recibido por la red.
+Además del estado HTTP, el frontend comprueba en tiempo de ejecución la respuesta: identificador entero positivo, tipo y fecha coincidentes con la solicitud, observaciones exactamente iguales a las normalizadas y enviadas (o `null` si se omitieron) y fecha de creación ISO en UTC. No se normaliza la respuesta para ocultar discrepancias. TypeScript por sí solo no garantiza la forma del JSON recibido por la red.
 
 Se distinguen los mensajes de validación de `400 / VALIDATION_ERROR`, los errores HTTP `404`, `413`, `500` y otros estados fallidos, los errores de red, el tiempo de espera agotado y las respuestas inesperadas. El mensaje español de un `400` con la estructura acordada puede mostrarse directamente; otros fallos reciben mensajes comprensibles sin exponer detalles internos.
 
@@ -162,7 +162,7 @@ Los mocks de `fetch` y las respuestas interceptadas por Playwright se limitan a 
 
 | Comprobación ejecutada                                                   | Resultado                                                              |
 | ------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| `npm test`                                                               | 104 pruebas superadas: 21 de interfaz y 83 de validación/cliente HTTP. |
+| `npm test`                                                               | 118 pruebas superadas: 25 de interfaz y 93 de validación/cliente HTTP. |
 | `npm run typecheck`                                                      | Sin errores de TypeScript.                                             |
 | `npm run build`                                                          | Compilación de producción completada.                                  |
 | `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e` | 14 pruebas superadas entre los proyectos de escritorio y móvil.        |

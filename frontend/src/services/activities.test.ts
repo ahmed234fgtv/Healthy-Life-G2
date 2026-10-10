@@ -58,7 +58,34 @@ describe('POST /api/activities', () => {
     )
   })
 
-  it.each([undefined, '', ' \n\t '])(
+  it.each([
+    '  Paseo por el parque',
+    'Paseo por el parque  ',
+    '  Paseo por el parque  ',
+  ])(
+    'sends normalized notes (%j) and accepts the matching 201',
+    async (notes) => {
+      fetchMock.mockResolvedValue(jsonResponse(activity))
+      await expect(createActivity({ ...payload, notes })).resolves.toEqual(
+        activity,
+      )
+      expect(JSON.parse(fetchMock.mock.calls[0][1]!.body as string)).toEqual(
+        payload,
+      )
+    },
+  )
+
+  it.each(['  Paseo por el parque  ', 'Paseo  por el parque'])(
+    'still rejects response notes that differ from the normalized request (%j)',
+    async (notes) => {
+      fetchMock.mockResolvedValue(jsonResponse({ ...activity, notes }))
+      await expect(
+        createActivity({ ...payload, notes: '  Paseo por el parque  ' }),
+      ).rejects.toMatchObject({ kind: 'unexpected', status: 201 })
+    },
+  )
+
+  it.each([undefined, '', '   ', ' \n\t '])(
     'omits blank optional notes (%j) and expects null in the response',
     async (notes) => {
       fetchMock.mockResolvedValue(jsonResponse({ ...activity, notes: null }))

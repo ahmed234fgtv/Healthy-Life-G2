@@ -10,7 +10,7 @@ El alcance es HU1. No incluye duración o intensidad, que pertenecen a HU6, ni l
 
 1. **Entrada.** El usuario modifica un campo. React actualiza `values`, el estado que contiene los tres valores del formulario.
 2. **Validación.** `validateActivity` comprueba que el tipo existe, la fecha es real y las observaciones no superan 500 caracteres. Si hay errores, no se llama a la API y el primer campo incorrecto recibe el foco.
-3. **Preparación.** `toActivityPayload` construye un objeto con las claves exactas del contrato. Omite las observaciones vacías o formadas únicamente por espacios y conserva las demás sin modificarlas.
+3. **Preparación.** `toActivityPayload` construye un objeto con las claves exactas del contrato. Aplica `trim()` a las observaciones, igual que el backend, y las omite si quedan vacías. Conserva los espacios y saltos de línea interiores y no modifica el texto del formulario.
 4. **Envío.** `createActivity` hace `fetch` con método `POST`, cuerpo JSON y cabecera `Content-Type: application/json` a `/api/activities`.
 5. **Espera.** La pantalla deshabilita los campos y el botón, muestra «Guardando actividad…» y evita enviar otra petición simultánea.
 6. **Resultado.** Si llegan `201` y un registro válido, muestra «Actividad registrada correctamente.» y limpia el formulario para el siguiente registro. Si hay un error, explica lo ocurrido y conserva los datos.
@@ -72,7 +72,7 @@ Una actividad tiene un día de calendario, no un instante. Se envía el texto `Y
 
 **¿Por qué no se recortan las observaciones al escribir?**
 
-El usuario puede corregir el texto que ha introducido y ve cuánto supera el límite; no se pierde una parte de lo que pega. El validador impide enviar más de 500 caracteres. `trim()` solo decide si el texto está vacío: cuando hay contenido se envía el original, incluidos sus espacios. La longitud utilizada es la de JavaScript, por lo que algunos emojis cuentan más de una unidad.
+El usuario puede corregir el texto que ha introducido y ve cuánto supera el límite; no se pierde una parte de lo que pega. El validador impide enviar más de 500 caracteres antes de normalizar. Al preparar el JSON, `trim()` elimina los espacios de los extremos para coincidir con lo que guarda el backend; si queda vacío, se omite `notes`. El texto visible se conserva durante la edición y tras un fallo. La respuesta debe coincidir exactamente con las observaciones normalizadas que se enviaron, o contener `notes: null` si se omitieron. La longitud utilizada es la de JavaScript, por lo que algunos emojis cuentan más de una unidad.
 
 **¿Por qué no reintentar automáticamente una petición fallida?**
 
@@ -100,7 +100,7 @@ Vitest comprueba funciones de validación y el cliente HTTP. Testing Library com
 
 Las pruebas cubren fechas inexistentes, el límite de observaciones, el JSON exacto, respuestas válidas y erróneas, fallos de red, duplicados y ausencia de confirmaciones falsas. Los mocks existen únicamente dentro de las pruebas: permiten reproducir esos casos sin depender del servidor.
 
-En esta implementación se han ejecutado correctamente **104 pruebas con Vitest**, **14 pruebas de navegador con Playwright**, la comprobación de TypeScript y la compilación de producción. Las [capturas del README](../README.md#capturas) muestran varios estados. La confirmación fotografiada utiliza un `201` simulado en una prueba, no un registro persistido realmente.
+En esta implementación se han ejecutado correctamente **118 pruebas con Vitest**, **14 pruebas de navegador con Playwright**, la comprobación de TypeScript y la compilación de producción. Las [capturas del README](../README.md#capturas) muestran varios estados. La confirmación fotografiada utiliza un `201` simulado en una prueba, no un registro persistido realmente.
 
 Eso **no demuestra todavía la integración con el backend real**, CORS ni la persistencia en SQLite. Esas comprobaciones deben realizarse conjuntamente con Álvaro. Tampoco equivale a una auditoría manual completa de accesibilidad ni a comprobar todos los navegadores.
 
