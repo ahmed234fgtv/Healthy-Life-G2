@@ -1,0 +1,16 @@
+# Node.js 24 incluye el módulo node:sqlite que usa el backend de Álvaro.
+FROM node:24-bookworm-slim
+
+WORKDIR /app
+
+# Se mantienen las dependencias de desarrollo porque el script "start" usa tsx.
+COPY backend/package.json backend/package-lock.json ./
+RUN npm ci \
+    && mkdir -p /app/data \
+    && chown node:node /app/data
+
+COPY backend/src/ ./src/
+
+USER node
+EXPOSE 3001
+CMD ["npm", "start"]

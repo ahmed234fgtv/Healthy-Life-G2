@@ -37,4 +37,4 @@ Healthy-Life-G2/
 - La historia se da por terminada cuando el delegado de Product Owner verifica sus criterios de aceptación (Definition of Done).
 - **Nunca** se suben secretos, contraseñas ni ficheros `.env`.
 
-Las instrucciones de despliegue con Docker se añadirán cuando esté integrado el frontend.
+Para ejecutar el proyecto con Docker, consulta la guía de despliegue
