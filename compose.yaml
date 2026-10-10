@@ -1,0 +1,42 @@
+# Ejecución local de HU1, sin modificar el código del frontend ni del backend.
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "127.0.0.1:3001:3001"
+    environment:
+      PORT: "3001"
+      DB_PATH: /app/data/healthy-life-e2.db
+      CORS_ORIGIN: http://localhost:5173
+      DEMO_USER_ID: demo-user
+    volumes:
+      - healthy_life_db:/app/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3001/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:3001
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  healthy_life_db:
