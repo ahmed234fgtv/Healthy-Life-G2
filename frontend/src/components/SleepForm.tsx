@@ -1,7 +1,10 @@
 import FieldError from './FieldError'
 import { useSleepForm } from '../hooks/useSleepForm'
+import type { SleepRecord } from '../types/sleep'
 
-export default function SleepForm() {
+type SleepFormProps = { onSaved?: (record: SleepRecord) => void }
+
+export default function SleepForm({ onSaved }: SleepFormProps = {}) {
   const {
     values,
     submitting,
@@ -12,7 +15,7 @@ export default function SleepForm() {
     blur,
     submit,
     visibleError,
-  } = useSleepForm()
+  } = useSleepForm(onSaved)
 
   return (
     <section

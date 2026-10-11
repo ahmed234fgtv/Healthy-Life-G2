@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RegisterActivityPage from './RegisterActivityPage'
 
 const fetchMock = vi.fn<typeof fetch>()
+const getFetchMock = vi.fn<typeof fetch>()
 const success = 'Horas de sueño registradas correctamente.'
 const sleepRecord = {
   id: 1,
@@ -19,7 +20,14 @@ const jsonResponse = (body: unknown, status = 201) =>
 
 beforeEach(() => {
   fetchMock.mockReset()
-  vi.stubGlobal('fetch', fetchMock)
+  getFetchMock.mockReset()
+  getFetchMock.mockImplementation(async () => jsonResponse([], 200))
+  // Keep the original assertions specific to POST, independently of dashboard reads.
+  vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) =>
+    init?.method === 'POST'
+      ? fetchMock(input, init)
+      : getFetchMock(input, init),
+  )
 })
 afterEach(() => vi.unstubAllGlobals())
 
@@ -36,6 +44,7 @@ describe('HU2 en la aplicación de Healthy Life', () => {
   it('muestra HU1 por defecto y permite elegir HU2 con el teclado', async () => {
     const user = userEvent.setup()
     render(<RegisterActivityPage />)
+    expect(getFetchMock).not.toHaveBeenCalled()
     expect(
       screen.getByRole('button', { name: 'Actividad física' }),
     ).toHaveAttribute('aria-pressed', 'true')
@@ -61,10 +70,9 @@ describe('HU2 en la aplicación de Healthy Life', () => {
     expect(
       screen.getByRole('spinbutton', { name: 'Horas dormidas' }),
     ).toBeVisible()
-    expect(screen.getByText('Ir al formulario')).toHaveAttribute(
-      'href',
-      '#sleep-form',
-    )
+    expect(
+      screen.getByText('Ir al formulario', { selector: '.skip-link' }),
+    ).toHaveAttribute('href', '#sleep-form')
   })
 
   it('conserva el borrador de HU1 y su endpoint al volver desde HU2', async () => {

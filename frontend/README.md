@@ -194,7 +194,7 @@ Para preparar la exposición, consulta [la explicación para defender HU1 en cla
 
 ## HU2 — Registrar horas de sueño (SCRUM-2)
 
-La misma aplicación incorpora un selector con dos botones para alternar entre **Actividad física** y **Horas de sueño**, manteniendo el formulario de HU1. HU2 sigue el [contrato de sueño](../docs/hu2-api.md) y utiliza la misma URL base, configuración CORS, dependencias y comandos de ejecución. No requiere otra aplicación ni otro puerto.
+La misma aplicación incorpora un selector con dos botones para alternar entre **Actividad física** y **Horas de sueño**, manteniendo el formulario de HU1. HU2 sigue el [contrato de sueño](../docs/hu2-api.md) y utiliza la misma URL base, configuración CORS y comandos de ejecución. No requiere otra aplicación ni otro puerto. Los apartados anteriores documentan la entrega de HU1; el seguimiento visual de sueño se describe a continuación.
 
 El formulario de sueño contiene únicamente dos campos obligatorios:
 
@@ -203,8 +203,81 @@ El formulario de sueño contiene únicamente dos campos obligatorios:
 | Fecha          | Día real del calendario gregoriano en `YYYY-MM-DD`, con año entre `0001` y `9999`. Se conserva sin conversión UTC y no se prohíben fechas futuras. |
 | Horas de sueño | Número finito mayor que `0` y menor o igual que `24`. Admite decimales, como `7.5`, y se envía como número JSON, nunca como cadena.                |
 
-Se envía `POST /api/sleep` con `{ "sleepDate": "2026-10-10", "hoursSlept": 7.5 }`, sin `userId`. El backend utiliza el mismo `DEMO_USER_ID` que HU1 y guarda en `sleep_records`, una tabla independiente del mismo archivo SQLite. Se permiten varios registros en una fecha. `GET /api/sleep` permite comprobarlos desde la API; no se añade un historial al frontend.
+Se envía `POST /api/sleep` con `{ "sleepDate": "2026-10-10", "hoursSlept": 7.5 }`, sin `userId`. El backend utiliza el mismo `DEMO_USER_ID` que HU1 y guarda en `sleep_records`, una tabla independiente del mismo archivo SQLite. Se permiten varios registros en una fecha. El seguimiento visual consume el `GET /api/sleep` existente para mostrar los registros y calcular sus estadísticas en el navegador.
 
 La lógica de HU2 se organiza en `src/types/sleep.ts`, `src/lib/sleepValidation.ts`, `src/services/sleep.ts`, `src/hooks/useSleepForm.ts` y `src/components/SleepForm.tsx`. La navegación se integra en `src/pages/RegisterActivityPage.tsx` y los estilos específicos se añaden a `src/styles.css`, reutilizando la identidad visual de HU1.
 
 Las pruebas de HU2 se encuentran junto a la validación y el servicio (`sleepValidation.test.ts` y `sleep.test.ts`), en `src/pages/RegisterSleepPage.test.tsx` y en `e2e/sleep.spec.ts`. Los comandos ya documentados, `npm test`, `npm run typecheck`, `npm run build` y `npm run test:e2e`, incluyen la ampliación. Las cifras de la sección anterior corresponden a la implementación previa de HU1 y no se presentan como resultados de HU2.
+
+### Seguimiento visual del sueño
+
+El panel situado debajo del formulario de registro muestra media por registro, total de horas, número de registros, máximo, mínimo y un gráfico de evolución. Es una ampliación de la interfaz que consume el endpoint de consulta ya disponible: no cambia el contrato HTTP, el backend, SQLite ni Docker. Los datos proceden del servidor; no se generan registros de ejemplo en la aplicación.
+
+Los períodos se calculan utilizando el día local del navegador, sin convertir las fechas de sueño a UTC:
+
+| Período           | Registros incluidos                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------- |
+| Últimos 7 días    | Desde hoy menos 6 días hasta hoy, ambos incluidos. Excluye fechas futuras.                              |
+| Últimos 30 días   | Desde hoy menos 29 días hasta hoy, ambos incluidos. Excluye fechas futuras. No equivale al mes natural. |
+| Todo el historial | Todos los registros recibidos, incluidos los de fechas futuras.                                         |
+
+La aritmética utiliza componentes del calendario gregoriano, contempla años bisiestos y limita el comienzo al año `0001`. No depende de la duración de un día en milisegundos, por lo que no altera los períodos en cambios de horario. El panel actualiza la referencia local al cambiar el día o volver a estar visible.
+
+**Las estadísticas se calculan por registro, no por día de calendario.** El total suma `hoursSlept`; la media divide ese total por la cantidad de registros del período. Por ejemplo, tres registros de `6`, `7.5` y `9` horas producen un total de `22.5` y una media de `7.5`, aunque dos tengan la misma fecha. Los días sin registros no cuentan como cero. No se agrupan ni se eliminan registros por compartir fecha.
+
+Los extremos identifican registros individuales y muestran su fecha. Ante un empate se elige primero la fecha más antigua y, si coincide, el menor `id`. Las tarjetas presentan hasta dos decimales en formato español; un valor positivo inferior a `0.01` aparece como `<0,01`, sin convertirlo visualmente en cero. Los cálculos conservan los valores numéricos recibidos, sin redondearlos previamente. Si no hay registros se muestra un estado vacío, no una media o un gráfico de ceros; se distingue entre ausencia total de datos y ausencia de datos en el período seleccionado.
+
+El gráfico ordena por `sleepDate` ascendente y después por `id`. Cada punto utiliza el identificador único del registro, de modo que varias entradas de una misma fecha siguen siendo puntos separados. La línea conecta los registros como referencia visual; no estima las horas de los días sin datos ni representa distancias temporales continuas entre registros. La información del punto incluye fecha, horas e identificador.
+
+La opción **Ver todos los registros** abre una tabla accesible con cada registro del período, sin recortar la colección. Tanto la tabla como la información del punto conservan la precisión del número recibido, aunque las tarjetas redondeen su presentación; los valores extremadamente pequeños pueden mostrarse en notación científica. El gráfico permite interacción por teclado y el panel conserva foco visible, anuncios de carga/error, adaptación móvil y reducción de movimiento.
+
+### Consulta y actualización
+
+`getSleepRecords()` reutiliza `VITE_API_BASE_URL` y solicita `GET /api/sleep`. Acepta un `200 OK` con un array, incluido `[]`, y valida cada registro: `id` entero positivo y único en la colección, `sleepDate` real, `hoursSlept` numérico y finito dentro del rango acordado y `createdAt` válido en UTC. Un estado HTTP inesperado, un JSON incorrecto, un elemento inválido o identificadores duplicados producen un error; no se transforman silenciosamente en una lista vacía.
+
+La consulta distingue errores HTTP, desconexión, respuesta inesperada y un tiempo máximo de 15 segundos, incluida la lectura del cuerpo. `useSleepRecords` cancela consultas obsoletas con `AbortController` y descarta respuestas tardías al cambiar de sección o comenzar otra consulta. Los estados de carga inicial, actualización, vacío y error se presentan por separado. **Reintentar consulta** vuelve a ejecutar únicamente el GET.
+
+`SleepForm` y `useSleepForm` admiten un callback opcional `onSaved`. Se notifica después de validar el `201` del POST para refrescar la consulta y las estadísticas. Un fallo del GET posterior tiene su propio mensaje y **no convierte un guardado confirmado en un error del formulario**. Tampoco reenvía el POST ni inventa datos para actualizar el gráfico.
+
+### Archivos y dependencia del panel
+
+| Archivo                                                                                  | Responsabilidad                                                                                            |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `src/services/sleep.ts`                                                                  | Añade la consulta y valida sus respuestas, manteniendo el registro por POST.                               |
+| `src/hooks/useSleepRecords.ts`                                                           | Carga, actualización, reintento y cancelación de consultas.                                                |
+| `src/lib/sleepStatistics.ts`                                                             | Filtrado por período, orden cronológico, métricas y formatos españoles; funciones independientes de React. |
+| `src/components/SleepDashboard.tsx`                                                      | Coordina períodos, consulta, estadísticas y estados del panel.                                             |
+| `src/components/SleepStatsCards.tsx`                                                     | Presenta las cinco métricas del período.                                                                   |
+| `src/components/SleepEvolutionChart.tsx`                                                 | Gráfico interactivo cargado solo al mostrar datos; su fallo queda aislado del formulario.                  |
+| `src/components/SleepRecordsTable.tsx`                                                   | Tabla accesible independiente, con todos los registros incluso si falla la gráfica.                        |
+| `src/components/SleepDashboard.css`, `SleepEvolutionChart.css` y `SleepRecordsTable.css` | Estilos específicos del seguimiento, coherentes con la interfaz existente.                                 |
+
+Se añade **Recharts 3.10.1**, compatible con React 19, para el gráfico SVG responsive, sus ejes, puntos, información contextual e interacción por teclado. Evita implementar manualmente esas interacciones y se utiliza solo para visualización; no sustituye los componentes ni los estilos propios de la aplicación. La versión queda fijada en `package.json` y `package-lock.json`, por lo que `npm ci` instala también esta dependencia.
+
+Las comprobaciones adicionales se encuentran en `src/services/sleepRecords.test.ts`, `src/lib/sleepStatistics.test.ts`, `src/pages/SleepDashboard.test.tsx` y `e2e/sleep-dashboard.spec.ts`. Cubren el cliente de consulta mediante respuestas simuladas en pruebas, filtros, cálculos, fechas extremas, registros repetidos, estados del panel, actualización tras guardar y comportamiento del gráfico en escritorio y móvil. Los comandos de ejecución, pruebas, TypeScript y compilación siguen siendo los mismos. Las cifras históricas de HU1 indicadas anteriormente no describen esta ampliación.
+
+### Resultados de la ampliación estadística
+
+Comprobaciones ejecutadas en Codex con Node.js 24 y Chromium:
+
+| Comprobación                               | Resultado                                                                                                                                                         |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend: pruebas y TypeScript              | 24/24 pruebas; TypeScript correcto. Sin archivos del backend modificados.                                                                                         |
+| Frontend: pruebas unitarias e interacción  | 444/444 pruebas.                                                                                                                                                  |
+| Frontend: TypeScript, producción y formato | Correctos. La gráfica se carga en un módulo separado.                                                                                                             |
+| Playwright: escritorio y móvil             | 44/44; incluye HU1, HU2, teclado, datos repetidos y los anchos 320, 375, 768, 1024 y 1440 px.                                                                     |
+| Integración real con Docker                | GET real, cinco métricas y puntos; POST 201 actualiza mediante un GET; registro HU1 correcto; datos y estadísticas conservados tras reiniciar ambos contenedores. |
+
+Las pruebas automatizadas de servicio y navegador utilizan respuestas controladas. La comprobación Docker adicional utilizó Express y SQLite reales en un volumen de pruebas aislado ya existente; no se borraron volúmenes ni se subieron bases de datos. La compilación en Codex incorporó la CA pública del entorno y permisos normales de Git a un contexto temporal, sin modificar Dockerfiles, Compose ni Nginx. Los resultados Docker corresponden a esa adaptación del entorno de compilación.
+
+### Publicar esta ampliación
+
+Después de revisar los cambios y ejecutar las comprobaciones, desde la raíz del repositorio y en la rama `feature/hu2-fullstack`, el autor puede publicar únicamente el frontend con:
+
+```bash
+git add frontend
+git commit -m "feat: añade seguimiento visual de las horas de sueño"
+git push origin feature/hu2-fullstack
+```
+
+`origin` debe apuntar al fork `ahmed234fgtv/Healthy-Life-G2`. La publicación de esta rama actualiza la PR #4 existente; estos comandos no hacen merge. Esta sección documenta los pasos y no afirma que se hayan ejecutado.

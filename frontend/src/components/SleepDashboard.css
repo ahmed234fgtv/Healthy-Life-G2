@@ -1,0 +1,332 @@
+.sleep-dashboard {
+  grid-column: 1 / -1;
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  padding-top: 38px;
+}
+.sleep-dashboard-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+}
+.sleep-dashboard-eyebrow {
+  margin: 0 0 13px;
+  color: var(--red);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+}
+.sleep-dashboard h2 {
+  margin: 0;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(34px, 3.4vw, 48px);
+  line-height: 1.12;
+  font-weight: 400;
+  letter-spacing: -0.7px;
+}
+.sleep-dashboard h2 em {
+  color: var(--red);
+}
+.sleep-dashboard-intro {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.sleep-period-control {
+  flex-shrink: 0;
+}
+.sleep-period-control > span {
+  display: block;
+  margin-bottom: 9px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.sleep-period-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  background: #eeece4;
+}
+.sleep-period-options button {
+  min-height: 40px;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 9px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink);
+  transition:
+    color 160ms,
+    background-color 160ms,
+    border-color 160ms;
+}
+.sleep-period-options button:hover {
+  color: var(--red);
+  background: var(--paper);
+}
+.sleep-period-options button[aria-pressed='true'] {
+  color: var(--red-dark);
+  border-color: #c6b7b5;
+  background: #fffefa;
+  font-weight: 700;
+}
+.sleep-period-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  justify-content: space-between;
+  margin: 24px 0 15px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.sleep-period-note p {
+  margin: 0;
+}
+.sleep-period-note [role='status'] {
+  color: var(--red-dark);
+  font-weight: 500;
+}
+.sleep-stats {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 24px;
+}
+.sleep-stat {
+  min-width: 0;
+  padding: 22px 18px 19px;
+  border: 1px solid var(--line);
+  border-bottom: 3px solid #b8baad;
+  background: #f0eee7;
+}
+.sleep-stat dt {
+  min-height: 32px;
+  color: #53584d;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.sleep-stat dd {
+  margin: 8px 0 0;
+}
+.sleep-stat-value {
+  display: block;
+  font-size: clamp(27px, 3vw, 42px);
+  font-weight: 500;
+  letter-spacing: -1.4px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.sleep-stat-unit {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  color: #53584d;
+}
+.sleep-stat-detail {
+  display: block;
+  margin-top: 19px;
+  font-size: 10px;
+  color: #53584d;
+  line-height: 1.6;
+}
+.sleep-stat-primary {
+  color: #fffefa;
+  background: var(--red-dark);
+  border-color: var(--red-dark);
+  border-bottom-color: var(--red);
+}
+.sleep-stat-primary dt,
+.sleep-stat-primary .sleep-stat-unit,
+.sleep-stat-primary .sleep-stat-detail {
+  color: #fff3eb;
+}
+.sleep-stat-primary .sleep-stat-value {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(42px, 4vw, 56px);
+  font-weight: 400;
+  line-height: 0.86;
+  padding-bottom: 4px;
+}
+.sleep-calculation-note {
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted);
+  max-width: 750px;
+  margin: 16px 0 0;
+}
+.sleep-chart-error {
+  padding: 18px;
+  border-left: 3px solid var(--red);
+  background: #fbefec;
+  color: var(--red-dark);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.sleep-dashboard-message {
+  border: 1px solid var(--line);
+  background: #f0eee7;
+  padding: 32px;
+}
+.sleep-dashboard-message h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.sleep-dashboard-message p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 610px;
+  margin: 8px 0 0;
+}
+.sleep-dashboard-empty {
+  display: flex;
+  gap: 24px;
+  align-items: start;
+}
+.sleep-empty-mark {
+  color: var(--red);
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 44px;
+  line-height: 1;
+}
+.sleep-dashboard-empty a,
+.sleep-text-button {
+  display: inline-block;
+  margin-top: 15px;
+  color: var(--red-dark);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  min-height: 40px;
+  padding: 10px 0;
+  background: transparent;
+  border: 0;
+}
+.sleep-dashboard-error {
+  border-left: 3px solid var(--red);
+  background: #fbefec;
+}
+.sleep-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 24px;
+  min-height: 44px;
+  margin-top: 20px;
+  padding: 10px 15px;
+  border: 1px solid var(--red-dark);
+  background: transparent;
+  color: var(--red-dark);
+  font-weight: 600;
+  font-size: 12px;
+  transition:
+    color 160ms,
+    background-color 160ms;
+}
+.sleep-retry:hover {
+  background: var(--red-dark);
+  color: #fffefa;
+}
+.sleep-dashboard-loading {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 12px;
+  padding-bottom: 24px;
+}
+.sleep-dashboard-loading span {
+  min-height: 160px;
+  background: #eae7de;
+  border-top: 2px solid #d5c8c3;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sleep-dashboard-results {
+    animation: form-enter 220ms ease-out both;
+  }
+  .sleep-dashboard-loading span {
+    animation: sleep-loading 1.2s ease-in-out infinite alternate;
+  }
+}
+@keyframes sleep-loading {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 1100px) {
+  .sleep-dashboard-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+  .sleep-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .sleep-stat-primary {
+    grid-column: 1 / -1;
+  }
+  .sleep-stat-primary dt {
+    min-height: auto;
+  }
+  .sleep-stat-primary dd {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
+  .sleep-stat-primary .sleep-stat-detail {
+    margin: 0 0 0 auto;
+  }
+}
+@media (max-width: 600px) {
+  .sleep-dashboard {
+    padding-top: 28px;
+  }
+  .sleep-period-control {
+    width: 100%;
+  }
+  .sleep-period-options {
+    gap: 2px;
+  }
+  .sleep-period-options button {
+    flex: 1;
+    padding: 9px 7px;
+    font-size: 10px;
+  }
+  .sleep-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .sleep-stat {
+    padding: 18px 14px 16px;
+  }
+  .sleep-stat-primary .sleep-stat-detail {
+    flex-basis: 100%;
+    margin-top: 5px;
+  }
+  .sleep-stat dt {
+    min-height: auto;
+  }
+  .sleep-stat-detail {
+    margin-top: 12px;
+  }
+  .sleep-dashboard-message {
+    padding: 23px 20px;
+  }
+  .sleep-dashboard-empty {
+    gap: 14px;
+  }
+  .sleep-empty-mark {
+    font-size: 30px;
+  }
+}

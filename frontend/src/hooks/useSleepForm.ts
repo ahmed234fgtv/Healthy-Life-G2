@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { localToday } from '../lib/activityValidation'
 import { toSleepPayload, validateSleep } from '../lib/sleepValidation'
 import { SleepApiError, createSleep } from '../services/sleep'
-import type { SleepFormValues } from '../types/sleep'
+import type { SleepFormValues, SleepRecord } from '../types/sleep'
 
 type FieldName = keyof SleepFormValues
 type Feedback = { kind: 'success' | 'error'; message: string } | null
@@ -11,7 +11,7 @@ const emptyForm = (): SleepFormValues => ({
   hoursSlept: '',
 })
 
-export function useSleepForm() {
+export function useSleepForm(onSaved?: (record: SleepRecord) => void) {
   const [values, setValues] = useState<SleepFormValues>(emptyForm)
   const [touched, setTouched] = useState<Partial<Record<FieldName, boolean>>>(
     {},
@@ -55,8 +55,9 @@ export function useSleepForm() {
     setSubmitting(true)
     const requestController = new AbortController()
     controller.current = requestController
+    let savedRecord: SleepRecord | undefined
     try {
-      await createSleep(toSleepPayload(values), {
+      const record = await createSleep(toSleepPayload(values), {
         signal: requestController.signal,
       })
       if (requestController.signal.aborted) return
@@ -66,6 +67,7 @@ export function useSleepForm() {
       })
       setValues(emptyForm())
       setTouched({})
+      savedRecord = record
     } catch (error) {
       if (requestController.signal.aborted) return
       setFeedback({
@@ -79,6 +81,8 @@ export function useSleepForm() {
       inFlight.current = false
       if (!requestController.signal.aborted) setSubmitting(false)
     }
+    // La actualización del panel es independiente del resultado del POST.
+    if (savedRecord && !requestController.signal.aborted) onSaved?.(savedRecord)
   }
 
   const visibleError = (field: FieldName) =>

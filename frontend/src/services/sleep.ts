@@ -20,6 +20,8 @@ const UNEXPECTED_MESSAGE =
   'El servidor ha devuelto una respuesta inesperada. No podemos confirmar el registro de las horas de sueño.'
 const CANCELLED_MESSAGE =
   'La solicitud se ha cancelado. No podemos confirmar el registro.'
+const LIST_UNEXPECTED_MESSAGE =
+  'El servidor ha devuelto datos de sueño inesperados. No se ha podido cargar el seguimiento.'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -52,7 +54,7 @@ function isHoursSlept(value: unknown): value is number {
 
 function isSleepRecord(
   value: unknown,
-  submitted: SleepPayload,
+  submitted?: SleepPayload,
 ): value is SleepRecord {
   if (!isRecord(value)) return false
   return (
@@ -61,10 +63,11 @@ function isSleepRecord(
     value.id > 0 &&
     typeof value.sleepDate === 'string' &&
     isRealCalendarDate(value.sleepDate) &&
-    value.sleepDate === submitted.sleepDate &&
     isHoursSlept(value.hoursSlept) &&
-    value.hoursSlept === submitted.hoursSlept &&
-    isUtcTimestamp(value.createdAt)
+    isUtcTimestamp(value.createdAt) &&
+    (submitted === undefined ||
+      (value.sleepDate === submitted.sleepDate &&
+        value.hoursSlept === submitted.hoursSlept))
   )
 }
 
@@ -147,8 +150,25 @@ export async function createSleep(
     sleepDate: payload.sleepDate,
     hoursSlept: payload.hoursSlept,
   }
+
+  return requestWithDeadline(
+    (signal) => sendSleep(submitted, signal),
+    options,
+    {
+      cancelled: CANCELLED_MESSAGE,
+      timeout:
+        'El servidor está tardando demasiado. No podemos confirmar el registro; comprueba la conexión antes de volver a enviarlo.',
+    },
+  )
+}
+
+async function requestWithDeadline<T>(
+  send: (signal: AbortSignal) => Promise<T>,
+  options: { signal?: AbortSignal },
+  messages: { cancelled: string; timeout: string },
+): Promise<T> {
   if (options.signal?.aborted)
-    throw new SleepApiError('network', CANCELLED_MESSAGE)
+    throw new SleepApiError('network', messages.cancelled)
 
   const controller = new AbortController()
   let timeout: ReturnType<typeof setTimeout> | undefined
@@ -156,27 +176,19 @@ export async function createSleep(
 
   const interrupted = new Promise<never>((_, reject) => {
     timeout = setTimeout(() => {
-      reject(
-        new SleepApiError(
-          'timeout',
-          'El servidor está tardando demasiado. No podemos confirmar el registro; comprueba la conexión antes de volver a enviarlo.',
-        ),
-      )
+      reject(new SleepApiError('timeout', messages.timeout))
       controller.abort()
     }, TIMEOUT_MS)
 
     onAbort = () => {
-      reject(new SleepApiError('network', CANCELLED_MESSAGE))
+      reject(new SleepApiError('network', messages.cancelled))
       controller.abort()
     }
     options.signal?.addEventListener('abort', onAbort, { once: true })
   })
 
   try {
-    return await Promise.race([
-      sendSleep(submitted, controller.signal),
-      interrupted,
-    ])
+    return await Promise.race([send(controller.signal), interrupted])
   } catch (error) {
     if (error instanceof SleepApiError) throw error
     throw new SleepApiError(
@@ -187,4 +199,78 @@ export async function createSleep(
     clearTimeout(timeout)
     if (onAbort) options.signal?.removeEventListener('abort', onAbort)
   }
+}
+
+function listHttpError(status: number, body: unknown): SleepApiError {
+  let message =
+    'No se han podido consultar los registros de sueño. El servidor ha rechazado la petición.'
+
+  if (
+    status === 400 &&
+    isRecord(body) &&
+    isRecord(body.error) &&
+    body.error.code === 'VALIDATION_ERROR' &&
+    typeof body.error.message === 'string' &&
+    body.error.message.trim().length > 0 &&
+    body.error.message.length <= 500
+  ) {
+    message = body.error.message
+  } else if (status === 404) {
+    message =
+      'No se ha encontrado el servicio de consulta de sueño. Comprueba la configuración de la API.'
+  } else if (status >= 500) {
+    message =
+      'El servidor no ha podido cargar los registros de sueño. Inténtalo de nuevo más tarde.'
+  }
+
+  return new SleepApiError('http', message, status)
+}
+
+async function readSleepRecords(signal: AbortSignal): Promise<SleepRecord[]> {
+  const baseUrl = (
+    import.meta.env.VITE_API_BASE_URL?.trim() || 'http://localhost:3001'
+  ).replace(/\/+$/, '')
+  const response = await fetch(`${baseUrl}/api/sleep`, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+    signal,
+  })
+
+  let body: unknown
+  try {
+    body = await response.json()
+  } catch {
+    if (!response.ok) throw listHttpError(response.status, undefined)
+    throw new SleepApiError(
+      'unexpected',
+      LIST_UNEXPECTED_MESSAGE,
+      response.status,
+    )
+  }
+
+  if (!response.ok) throw listHttpError(response.status, body)
+  if (
+    response.status !== 200 ||
+    !Array.isArray(body) ||
+    !body.every((record: unknown) => isSleepRecord(record)) ||
+    new Set(body.map((record) => record.id)).size !== body.length
+  ) {
+    throw new SleepApiError(
+      'unexpected',
+      LIST_UNEXPECTED_MESSAGE,
+      response.status,
+    )
+  }
+  return body
+}
+
+/** Malformed data is an error; only a confirmed HTTP 200 array can be empty. */
+export async function getSleepRecords(
+  options: { signal?: AbortSignal } = {},
+): Promise<SleepRecord[]> {
+  return requestWithDeadline(readSleepRecords, options, {
+    cancelled: 'Se ha cancelado la consulta de los registros de sueño.',
+    timeout:
+      'El servidor está tardando demasiado en cargar los registros de sueño. Inténtalo de nuevo.',
+  })
 }

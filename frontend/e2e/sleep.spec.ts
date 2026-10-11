@@ -4,6 +4,14 @@ import { expect, test } from '@playwright/test'
 const endpoint = 'http://localhost:3001/api/sleep'
 const success = 'Horas de sueño registradas correctamente.'
 
+test.beforeEach(async ({ page }) => {
+  await page.route(endpoint, (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({ status: 200, json: [] })
+      : route.fallback(),
+  )
+})
+
 test('el selector funciona por teclado y conserva el borrador de HU1', async ({
   page,
 }) => {
@@ -44,6 +52,7 @@ test('registra horas decimales y mantiene accesibilidad y diseño responsive', a
 }, testInfo) => {
   let payload: unknown
   await page.route(endpoint, (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
     payload = route.request().postDataJSON()
     return route.fulfill({
       status: 201,
@@ -69,18 +78,19 @@ test('registra horas decimales y mantiene accesibilidad y diseño responsive', a
   await page.getByLabel('Fecha del sueño').fill('2026-10-11')
   await page.getByRole('spinbutton', { name: 'Horas dormidas' }).fill('7.5')
   await page.screenshot({
-    path: testInfo.outputPath('sleep-form.png'),
+    path: testInfo.outputPath('sleep-form-controlled-mock.png'),
     fullPage: true,
   })
   await page.getByRole('button', { name: 'Guardar horas de sueño' }).click()
   await expect(page.getByText(success)).toBeVisible()
   expect(payload).toEqual({ sleepDate: '2026-10-11', hoursSlept: 7.5 })
+  await expect(page.locator('.feedback-success')).toHaveCSS('opacity', '1')
   const result = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
     .analyze()
   expect(result.violations).toEqual([])
   await page.screenshot({
-    path: testInfo.outputPath('sleep-success.png'),
+    path: testInfo.outputPath('sleep-success-controlled-mock.png'),
     fullPage: true,
   })
   for (const width of [320, 375, 768, 1024]) {
@@ -101,7 +111,11 @@ test('registra horas decimales y mantiene accesibilidad y diseño responsive', a
 test('muestra errores de validación y de red sin perder las horas', async ({
   page,
 }) => {
-  await page.route(endpoint, (route) => route.abort('connectionrefused'))
+  await page.route(endpoint, (route) =>
+    route.request().method() === 'POST'
+      ? route.abort('connectionrefused')
+      : route.fallback(),
+  )
   await page.goto('/')
   await page
     .getByRole('button', { name: 'Horas de sueño', exact: true })

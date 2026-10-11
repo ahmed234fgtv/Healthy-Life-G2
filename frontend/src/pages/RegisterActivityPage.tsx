@@ -1,13 +1,18 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import ActivityForm from '../components/ActivityForm'
 import MovementIllustration from '../components/MovementIllustration'
 import SleepForm from '../components/SleepForm'
+import SleepDashboard from '../components/SleepDashboard'
 
 export default function RegisterActivityPage() {
   const [selectedHabit, setSelectedHabit] = useState<'activity' | 'sleep'>(
     'activity',
   )
   const isActivity = selectedHabit === 'activity'
+  const [sleepRevision, setSleepRevision] = useState(0)
+  const refreshSleep = useCallback(() => {
+    setSleepRevision((revision) => revision + 1)
+  }, [])
 
   return (
     <div className="app-shell">
@@ -100,8 +105,9 @@ export default function RegisterActivityPage() {
           <ActivityForm />
         </div>
         <div className="habit-panel" id="sleep-panel" hidden={isActivity}>
-          <SleepForm />
+          <SleepForm onSaved={refreshSleep} />
         </div>
+        <SleepDashboard active={!isActivity} revision={sleepRevision} />
       </main>
 
       <footer className="site-footer">

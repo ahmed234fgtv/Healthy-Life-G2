@@ -1,0 +1,105 @@
+.sleep-evolution {
+  min-width: 0;
+  margin: 0;
+}
+
+.sleep-evolution-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.sleep-evolution-heading h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.sleep-evolution-heading > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.sleep-evolution-chart {
+  width: 100%;
+  min-width: 0;
+  height: 270px;
+}
+
+.sleep-evolution-chart .recharts-surface:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.sleep-evolution-tooltip {
+  max-width: min(190px, calc(100vw - 90px));
+  padding: 11px 13px;
+  border: 1px solid #c7c9bf;
+  border-left: 3px solid var(--red);
+  background: #fffefa;
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.sleep-evolution-tooltip p {
+  margin: 0 0 5px;
+  color: var(--muted);
+}
+
+.sleep-evolution-tooltip strong {
+  display: block;
+  color: var(--red);
+  font-size: 21px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.sleep-evolution-tooltip strong span {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.sleep-evolution-record-id {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+  font-size: 10px;
+}
+
+.sleep-evolution-explanation,
+.sleep-evolution-keyboard {
+  font-size: 11px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.sleep-evolution-explanation {
+  margin: 9px 0 0;
+  max-width: 620px;
+}
+
+.sleep-evolution-keyboard {
+  margin: 4px 0 0;
+}
+
+@media (max-width: 480px) {
+  .sleep-evolution-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .sleep-evolution-heading h3 {
+    font-size: 14px;
+  }
+
+  .sleep-evolution-chart {
+    height: 245px;
+  }
+}
