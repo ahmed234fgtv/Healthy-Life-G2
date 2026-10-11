@@ -5,6 +5,8 @@ import cors from "cors";
 import type { DatabaseSync } from "node:sqlite";
 import { insertActivity, listActivities, type ActivityRow } from "./db.ts";
 import { validateNewActivity } from "./validation.ts";
+import { insertSleep, listSleep, type SleepRow } from "./db.ts";
+import { validateNewSleep } from "./validation.ts";
 
 export interface AppConfig {
   db: DatabaseSync;
@@ -26,6 +28,15 @@ function toApi(row: ActivityRow) {
 
 function errorBody(code: string, message: string) {
   return { error: { code, message } };
+}
+
+function sleepToApi(row: SleepRow) {
+  return {
+    id: row.id,
+    sleepDate: row.sleep_date,
+    hoursSlept: row.hours_slept,
+    createdAt: row.created_at,
+  };
 }
 
 export function createApp({ db, demoUserId, corsOrigin }: AppConfig) {
@@ -51,6 +62,22 @@ export function createApp({ db, demoUserId, corsOrigin }: AppConfig) {
   // Auxiliar: permite comprobar que lo registrado se ha guardado.
   app.get("/api/activities", (_req, res) => {
     res.json(listActivities(db, demoUserId).map(toApi));
+  });
+
+  // HU2 — Registrar horas de sueño. La identidad la proporciona el servidor.
+  app.post("/api/sleep", (req, res) => {
+    const result = validateNewSleep(req.body);
+    if (!result.ok) {
+      res.status(400).json(errorBody("VALIDATION_ERROR", result.message));
+      return;
+    }
+    const row = insertSleep(db, { userId: demoUserId, ...result.value });
+    res.status(201).json(sleepToApi(row));
+  });
+
+  // Auxiliar: registros del usuario configurado, del más reciente al más antiguo.
+  app.get("/api/sleep", (_req, res) => {
+    res.json(listSleep(db, demoUserId).map(sleepToApi));
   });
 
   app.use("/api", (_req, res) => {

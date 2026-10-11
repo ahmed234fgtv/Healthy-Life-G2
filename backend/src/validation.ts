@@ -51,3 +51,39 @@ export function validateNewActivity(body: unknown): ValidationResult {
 
   return { ok: true, value: { activityType, activityDate, notes: cleanNotes } };
 }
+
+export type SleepValidationResult =
+  | { ok: true; value: { sleepDate: string; hoursSlept: number } }
+  | { ok: false; message: string };
+
+// HU2 usa componentes de calendario, sin conversiones UTC ni cambios en HU1.
+function isRealSleepDate(value: string): boolean {
+  if (value.length !== 10 || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  if (year < 1 || month < 1 || month > 12 || day < 1) return false;
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysPerMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= daysPerMonth[month - 1];
+}
+
+export function validateNewSleep(body: unknown): SleepValidationResult {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return { ok: false, message: "El cuerpo de la petición debe ser un objeto JSON." };
+  }
+  const { sleepDate, hoursSlept } = body as Record<string, unknown>;
+
+  if (typeof sleepDate !== "string" || !isRealSleepDate(sleepDate)) {
+    return { ok: false, message: "La fecha del sueño no es válida." };
+  }
+
+  if (
+    typeof hoursSlept !== "number" ||
+    !Number.isFinite(hoursSlept) ||
+    hoursSlept <= 0 ||
+    hoursSlept > 24
+  ) {
+    return { ok: false, message: "Las horas de sueño no son válidas." };
+  }
+
+  return { ok: true, value: { sleepDate, hoursSlept } };
+}

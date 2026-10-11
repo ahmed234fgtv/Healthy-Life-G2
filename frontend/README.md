@@ -39,7 +39,7 @@ Las variables `VITE_*` son públicas y quedan incorporadas en el frontend: no co
 
 ## Funcionalidad
 
-La única pantalla contiene:
+El formulario de HU1 contiene:
 
 | Campo                 | Comportamiento                                                                                                                                                |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -158,7 +158,7 @@ La variable es opcional y solo debe apuntar a un ejecutable existente. Las captu
 
 Los mocks de `fetch` y las respuestas interceptadas por Playwright se limitan a las pruebas. Las pruebas de navegador recorren el frontend completo, pero **no validan el backend real, CORS ni SQLite**. Una auditoría automática de accesibilidad tampoco sustituye una revisión humana con lector de pantalla.
 
-### Resultados de esta implementación
+### Resultados de la implementación previa de HU1
 
 | Comprobación ejecutada                                                   | Resultado                                                              |
 | ------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
@@ -191,3 +191,20 @@ Con el backend de Álvaro disponible, comprobar conjuntamente el origen CORS, el
 El backend mantiene la asociación al usuario de prueba `DEMO_USER_ID` mientras no exista la integración con E1. Este frontend no implementa autenticación, estadísticas, objetivos, duración ni intensidad. Tampoco contiene servidor, consultas SQL ni configuración Docker.
 
 Para preparar la exposición, consulta [la explicación para defender HU1 en clase](docs/defensa-hu1.md).
+
+## HU2 — Registrar horas de sueño (SCRUM-2)
+
+La misma aplicación incorpora un selector con dos botones para alternar entre **Actividad física** y **Horas de sueño**, manteniendo el formulario de HU1. HU2 sigue el [contrato de sueño](../docs/hu2-api.md) y utiliza la misma URL base, configuración CORS, dependencias y comandos de ejecución. No requiere otra aplicación ni otro puerto.
+
+El formulario de sueño contiene únicamente dos campos obligatorios:
+
+| Campo          | Reglas                                                                                                                                             |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fecha          | Día real del calendario gregoriano en `YYYY-MM-DD`, con año entre `0001` y `9999`. Se conserva sin conversión UTC y no se prohíben fechas futuras. |
+| Horas de sueño | Número finito mayor que `0` y menor o igual que `24`. Admite decimales, como `7.5`, y se envía como número JSON, nunca como cadena.                |
+
+Se envía `POST /api/sleep` con `{ "sleepDate": "2026-10-10", "hoursSlept": 7.5 }`, sin `userId`. El backend utiliza el mismo `DEMO_USER_ID` que HU1 y guarda en `sleep_records`, una tabla independiente del mismo archivo SQLite. Se permiten varios registros en una fecha. `GET /api/sleep` permite comprobarlos desde la API; no se añade un historial al frontend.
+
+La lógica de HU2 se organiza en `src/types/sleep.ts`, `src/lib/sleepValidation.ts`, `src/services/sleep.ts`, `src/hooks/useSleepForm.ts` y `src/components/SleepForm.tsx`. La navegación se integra en `src/pages/RegisterActivityPage.tsx` y los estilos específicos se añaden a `src/styles.css`, reutilizando la identidad visual de HU1.
+
+Las pruebas de HU2 se encuentran junto a la validación y el servicio (`sleepValidation.test.ts` y `sleep.test.ts`), en `src/pages/RegisterSleepPage.test.tsx` y en `e2e/sleep.spec.ts`. Los comandos ya documentados, `npm test`, `npm run typecheck`, `npm run build` y `npm run test:e2e`, incluyen la ampliación. Las cifras de la sección anterior corresponden a la implementación previa de HU1 y no se presentan como resultados de HU2.

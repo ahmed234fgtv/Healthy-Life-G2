@@ -1,10 +1,20 @@
+import { useState } from 'react'
 import ActivityForm from '../components/ActivityForm'
 import MovementIllustration from '../components/MovementIllustration'
+import SleepForm from '../components/SleepForm'
 
 export default function RegisterActivityPage() {
+  const [selectedHabit, setSelectedHabit] = useState<'activity' | 'sleep'>(
+    'activity',
+  )
+  const isActivity = selectedHabit === 'activity'
+
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#activity-form">
+      <a
+        className="skip-link"
+        href={isActivity ? '#activity-form' : '#sleep-form'}
+      >
         Ir al formulario
       </a>
       <header className="site-header">
@@ -23,6 +33,25 @@ export default function RegisterActivityPage() {
         </div>
       </header>
 
+      <nav className="habit-selector" aria-label="Tipo de registro">
+        <button
+          type="button"
+          aria-pressed={isActivity}
+          aria-controls="activity-panel"
+          onClick={() => setSelectedHabit('activity')}
+        >
+          Actividad física
+        </button>
+        <button
+          type="button"
+          aria-pressed={!isActivity}
+          aria-controls="sleep-panel"
+          onClick={() => setSelectedHabit('sleep')}
+        >
+          Horas de sueño
+        </button>
+      </nav>
+
       <main className="workspace">
         <section className="introduction" aria-labelledby="page-title">
           <p className="eyebrow">
@@ -30,25 +59,49 @@ export default function RegisterActivityPage() {
           </p>
           <h1 id="page-title">
             Registrar <br />
-            <em>actividad física</em>
+            <em>{isActivity ? 'actividad física' : 'horas de sueño'}</em>
           </h1>
           <p className="intro-copy">
-            Anota qué has hecho y cuándo.
-            <br className="desktop-break" /> Un lugar para registrar tu
-            movimiento, actividad a actividad.
+            {isActivity ? (
+              <>
+                Anota qué has hecho y cuándo.
+                <br className="desktop-break" /> Un lugar para registrar tu
+                movimiento, actividad a actividad.
+              </>
+            ) : (
+              <>
+                Anota la fecha y las horas que has dormido. Puedes incluir
+                medias horas u otros valores decimales.
+              </>
+            )}
           </p>
-          <MovementIllustration />
+          {isActivity && <MovementIllustration />}
           <div className="intro-note">
             <span className="note-line" aria-hidden="true" />
             <p>
-              Caminar, correr, entrenar…
-              <br />
-              Elige la actividad que mejor describa la tuya.
+              {isActivity ? (
+                <>
+                  Caminar, correr, entrenar…
+                  <br />
+                  Elige la actividad que mejor describa la tuya.
+                </>
+              ) : (
+                <>
+                  Tu descanso, día a día.
+                  <br />
+                  Registra más de 0 y hasta 24 horas.
+                </>
+              )}
             </p>
           </div>
         </section>
 
-        <ActivityForm />
+        <div className="habit-panel" id="activity-panel" hidden={!isActivity}>
+          <ActivityForm />
+        </div>
+        <div className="habit-panel" id="sleep-panel" hidden={isActivity}>
+          <SleepForm />
+        </div>
       </main>
 
       <footer className="site-footer">
