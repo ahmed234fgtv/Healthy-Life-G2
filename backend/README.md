@@ -65,3 +65,21 @@ backend/
 └── tests/
     └── activities.test.ts
 ```
+
+## HU2 — Registrar horas de sueño
+
+El contrato de sueño está documentado en [`docs/hu2-api.md`](../docs/hu2-api.md).
+`POST /api/sleep` recibe `sleepDate` (`YYYY-MM-DD`, fecha real) y `hoursSlept`
+(número finito mayor que 0 y menor o igual que 24; admite decimales).
+`GET /api/sleep` permite comprobar los registros del usuario configurado, ordenados
+por fecha e identificador descendentes. Se admiten varios registros del mismo día.
+
+La tabla `sleep_records` se crea automáticamente en la misma base SQLite mediante
+una ampliación aditiva: la tabla `activities` y sus datos se conservan.
+Se utilizan las mismas variables `DB_PATH`, `DEMO_USER_ID`, `PORT` y `CORS_ORIGIN`.
+No hace falta instalar dependencias nuevas ni cambiar el arranque.
+
+`npm test` incluye las pruebas de HU1 y `tests/sleep.test.ts`. Las pruebas de HU2
+comprueban validaciones, identidad, ordenación, errores, persistencia tras reabrir
+un fichero temporal y ampliación de una base previa de HU1. Los ficheros temporales
+se eliminan al terminar cada prueba.

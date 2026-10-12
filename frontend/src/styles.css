@@ -814,3 +814,55 @@ textarea:disabled {
     transform: none;
   }
 }
+
+/* Selector compartido de HU1 y HU2. */
+.habit-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+  margin-bottom: -24px;
+}
+.habit-selector button {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-bottom: 2px solid var(--line);
+  border-radius: 3px 3px 0 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    color 160ms,
+    border-color 160ms,
+    background-color 160ms;
+}
+.habit-selector button:hover {
+  color: var(--red-dark);
+  background: #eeeae2;
+}
+.habit-selector button[aria-pressed='true'] {
+  color: var(--red);
+  border-bottom-color: var(--red);
+  font-weight: 700;
+}
+.habit-panel {
+  min-width: 0;
+}
+/* Reserva el espacio del error para que Guardar no se desplace al salir del campo. */
+.sleep-field-error {
+  min-height: 40px;
+  display: flow-root;
+}
+@media (max-width: 480px) {
+  .habit-selector {
+    margin-top: 18px;
+    margin-bottom: -8px;
+  }
+  .habit-selector button {
+    flex: 1;
+    padding-inline: 9px;
+    font-size: 12px;
+  }
+}
