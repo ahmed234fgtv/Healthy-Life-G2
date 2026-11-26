@@ -263,6 +263,32 @@ export function listActivities(db: DatabaseSync, userId: string): ActivityRow[] 
     .all(userId) as unknown as ActivityRow[];
 }
 
+// HU7: solo cambian los campos editables, no la identidad ni la fecha de alta.
+export function updateActivity(db: DatabaseSync, id: number, a: Pick<NewActivity, "userId" | "activityType" | "activityDate" | "notes">): ActivityRow | undefined {
+  const result = db.prepare(`UPDATE activities SET activity_type = ?, activity_date = ?, notes = ?
+    WHERE id = ? AND user_id = ?`).run(a.activityType, a.activityDate, a.notes, id, a.userId);
+  if (Number(result.changes) === 0) return undefined;
+  return listActivities(db, a.userId).find((row) => row.id === id);
+}
+
+export function deleteActivity(db: DatabaseSync, userId: string, id: number): boolean {
+  db.exec("BEGIN");
+  try {
+    // HU4 usa una tabla dependiente sin ON DELETE CASCADE.
+    // Solo se elimina su fila si pertenece al usuario configurado.
+    if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'activity_intensity'").get()) {
+      db.prepare(`DELETE FROM activity_intensity WHERE activity_id IN
+        (SELECT id FROM activities WHERE id = ? AND user_id = ?)`).run(id, userId);
+    }
+    const result = db.prepare("DELETE FROM activities WHERE id = ? AND user_id = ?").run(id, userId);
+    db.exec("COMMIT");
+    return Number(result.changes) === 1;
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
 export function insertSleep(db: DatabaseSync, sleep: NewSleep): SleepRow {
   const createdAt = new Date().toISOString();
   const result = db
