@@ -1,6 +1,8 @@
 import {
   isRealCalendarDate,
   toActivityPayload,
+  toActivityChanges,
+  type ActivityChanges,
 } from '../lib/activityValidation'
 import {
   ACTIVITY_OPTIONS,
@@ -48,9 +50,9 @@ function isUtcTimestamp(value: unknown): value is string {
   )
 }
 
-function isActivity(
+function isActivityChange(
   value: unknown,
-  submitted: ActivityPayload,
+  submitted: ActivityChanges,
 ): value is Activity {
   if (!isRecord(value)) return false
   return (
@@ -67,6 +69,13 @@ function isActivity(
     value.notes === (submitted.notes ?? null) &&
     isUtcTimestamp(value.createdAt)
   )
+}
+
+function isActivity(
+  value: unknown,
+  submitted: ActivityPayload,
+): value is Activity {
+  return isActivityChange(value, submitted)
 }
 
 function httpError(status: number, body: unknown): ApiError {
@@ -110,6 +119,7 @@ export async function listActivities(
   userId = 'demo-user',
 ): Promise<Activity[]> {
   const response = await fetch(`${getBaseUrl()}/api/activities`, {
+    signal: AbortSignal.timeout(TIMEOUT_MS),
     headers: {
       Accept: 'application/json',
       'X-User-Id': userId,
@@ -134,7 +144,10 @@ export async function listActivities(
 
   return body.map((item) => {
     if (!isRecord(item)) {
-      throw new ApiError('unexpected', 'El historial contiene registros inválidos.')
+      throw new ApiError(
+        'unexpected',
+        'El historial contiene registros inválidos.',
+      )
     }
 
     const activityType = item.activityType
@@ -149,7 +162,10 @@ export async function listActivities(
       (item.notes !== null && typeof item.notes !== 'string') ||
       !isUtcTimestamp(item.createdAt)
     ) {
-      throw new ApiError('unexpected', 'El historial contiene registros inválidos.')
+      throw new ApiError(
+        'unexpected',
+        'El historial contiene registros inválidos.',
+      )
     }
 
     return {
@@ -200,7 +216,19 @@ export async function createActivity(
     activityDate: payload.activityDate,
     notes: payload.notes ?? '',
   })
-  if (options.signal?.aborted) throw new ApiError('network', CANCELLED_MESSAGE)
+  return performRequest(
+    (signal) => sendActivity(submitted, signal),
+    options.signal,
+    'El servidor está tardando demasiado. No podemos confirmar el registro; comprueba la conexión antes de volver a enviarlo.',
+  )
+}
+
+async function performRequest<T>(
+  send: (signal: AbortSignal) => Promise<T>,
+  signal?: AbortSignal,
+  timeoutMessage = 'El servidor está tardando demasiado. Comprueba el historial antes de volver a enviar los cambios.',
+): Promise<T> {
+  if (signal?.aborted) throw new ApiError('network', CANCELLED_MESSAGE)
 
   const controller = new AbortController()
   let timeout: ReturnType<typeof setTimeout> | undefined
@@ -208,12 +236,7 @@ export async function createActivity(
 
   const interrupted = new Promise<never>((_, reject) => {
     timeout = setTimeout(() => {
-      reject(
-        new ApiError(
-          'timeout',
-          'El servidor está tardando demasiado. No podemos confirmar el registro; comprueba la conexión antes de volver a enviarlo.',
-        ),
-      )
+      reject(new ApiError('timeout', timeoutMessage))
       controller.abort()
     }, TIMEOUT_MS)
 
@@ -221,14 +244,11 @@ export async function createActivity(
       reject(new ApiError('network', CANCELLED_MESSAGE))
       controller.abort()
     }
-    options.signal?.addEventListener('abort', onAbort, { once: true })
+    signal?.addEventListener('abort', onAbort, { once: true })
   })
 
   try {
-    return await Promise.race([
-      sendActivity(submitted, controller.signal),
-      interrupted,
-    ])
+    return await Promise.race([send(controller.signal), interrupted])
   } catch (error) {
     if (error instanceof ApiError) throw error
     throw new ApiError(
@@ -237,6 +257,83 @@ export async function createActivity(
     )
   } finally {
     clearTimeout(timeout)
-    if (onAbort) options.signal?.removeEventListener('abort', onAbort)
+    if (onAbort) signal?.removeEventListener('abort', onAbort)
   }
+}
+
+async function checkChangeResponse(response: Response) {
+  if (response.ok) return
+  if (response.status === 404) {
+    throw new ApiError('http', 'La actividad ya no está en tu historial.', 404)
+  }
+  if (response.status === 400 || response.status === 413) {
+    throw httpError(
+      response.status,
+      await response.json().catch(() => undefined),
+    )
+  }
+  throw new ApiError(
+    'http',
+    'El servidor no ha podido completar el cambio en la actividad.',
+    response.status,
+  )
+}
+
+function activityUrl(id: number) {
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw new ApiError(
+      'unexpected',
+      'El identificador de la actividad no es válido.',
+    )
+  }
+  return `${getBaseUrl()}/api/activities/${id}`
+}
+
+export async function updateActivity(
+  id: number,
+  changes: ActivityChanges,
+): Promise<Activity> {
+  const url = activityUrl(id)
+  const fields = toActivityChanges({
+    activityType: changes.activityType,
+    activityDate: changes.activityDate,
+    notes: changes.notes ?? '',
+  })
+  return performRequest(async (signal) => {
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...fields, notes: fields.notes ?? null }),
+      signal,
+    })
+    await checkChangeResponse(response)
+    const updated: unknown = await response.json().catch(() => undefined)
+    if (
+      response.status !== 200 ||
+      !isActivityChange(updated, fields) ||
+      updated.id !== id
+    ) {
+      throw new ApiError(
+        'unexpected',
+        'No se ha podido confirmar la edición. Comprueba el historial.',
+        response.status,
+      )
+    }
+    return updated
+  })
+}
+
+export async function deleteActivity(id: number): Promise<void> {
+  const url = activityUrl(id)
+  await performRequest(async (signal) => {
+    const response = await fetch(url, { method: 'DELETE', signal })
+    await checkChangeResponse(response)
+    if (response.status !== 204) {
+      throw new ApiError(
+        'unexpected',
+        'No se ha podido confirmar la eliminación. Comprueba el historial.',
+        response.status,
+      )
+    }
+  })
 }

@@ -4,6 +4,15 @@ import {
   type ActivityPayload,
 } from '../types/activity'
 
+export type EditableActivityFields = Pick<
+  ActivityFormValues,
+  'activityType' | 'activityDate' | 'notes'
+>
+export type ActivityChanges = Pick<
+  ActivityPayload,
+  keyof EditableActivityFields
+>
+
 /** Calendar-only dates deliberately never pass through Date or UTC conversion. */
 export function isRealCalendarDate(value: string): boolean {
   if (value.length !== 10 || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
@@ -36,10 +45,10 @@ export function localToday(date = new Date()): string {
   return `${year}-${month}-${day}`
 }
 
-export function validateActivity(
-  values: ActivityFormValues,
-): Partial<Record<keyof ActivityFormValues, string>> {
-  const errors: Partial<Record<keyof ActivityFormValues, string>> = {}
+export function validateActivityFields(
+  values: EditableActivityFields,
+): Partial<Record<keyof EditableActivityFields, string>> {
+  const errors: Partial<Record<keyof EditableActivityFields, string>> = {}
 
   if (!ACTIVITY_OPTIONS.some(({ value }) => value === values.activityType)) {
     errors.activityType = 'Selecciona un tipo de actividad.'
@@ -56,9 +65,11 @@ export function validateActivity(
   return errors
 }
 
-export function toActivityPayload(values: ActivityFormValues): ActivityPayload {
+export function toActivityChanges(
+  values: EditableActivityFields,
+): ActivityChanges {
   if (
-    Object.keys(validateActivity(values)).length > 0 ||
+    Object.keys(validateActivityFields(values)).length > 0 ||
     values.activityType === ''
   ) {
     throw new Error('No se puede enviar una actividad con datos inválidos.')
@@ -72,4 +83,14 @@ export function toActivityPayload(values: ActivityFormValues): ActivityPayload {
     activityDate: values.activityDate,
     ...(notes ? { notes } : {}),
   }
+}
+
+// El alta puede ampliar estos campos sin cambiar la edición de registros anteriores.
+export function validateActivity(
+  values: ActivityFormValues,
+): Partial<Record<keyof ActivityFormValues, string>> {
+  return validateActivityFields(values)
+}
+export function toActivityPayload(values: ActivityFormValues): ActivityPayload {
+  return toActivityChanges(values)
 }

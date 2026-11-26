@@ -21,7 +21,7 @@ function isRealDate(value: string): boolean {
   );
 }
 
-export function validateNewActivity(body: unknown): ValidationResult {
+export function validateActivityUpdate(body: unknown): ValidationResult {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
     return { ok: false, message: "El cuerpo de la petición debe ser un objeto JSON." };
   }
@@ -51,6 +51,11 @@ export function validateNewActivity(body: unknown): ValidationResult {
   }
 
   return { ok: true, value: { activityType, activityDate, notes: cleanNotes } };
+}
+
+// El alta y la edición comparten las reglas de los campos editables.
+export function validateNewActivity(body: unknown): ValidationResult {
+  return validateActivityUpdate(body);
 }
 
 export const SLEEP_TYPES = ["night", "nap", "other"] as const;
